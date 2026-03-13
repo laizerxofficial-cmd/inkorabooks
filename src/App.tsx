@@ -274,7 +274,7 @@ const Navbar = ({
           onClick={() => setPage('home')}
         >
           <div className="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center group-hover:scale-110 transition-transform">
-            <img src="./public/logo.png" alt="INKORA Logo" className="w-full h-full object-contain" />
+            <img src="/logo.png" alt="INKORA Logo" className="w-full h-full object-contain" />
           </div>       
           <span className="text-xl sm:text-2xl font-serif font-bold tracking-tight text-ink hidden xs:block logo_color">INKORA</span>
         </motion.div>
@@ -2259,7 +2259,7 @@ const Footer = ({ setPage }: { setPage: (p: Page) => void }) => {
           <div className="space-y-8">
             <div className="flex items-center gap-3">
                         <div className="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center group-hover:scale-110 transition-transform">
-            <img src="./public/logo.png" alt="INKORA Logo" className="w-full h-full object-contain" />
+            <img src="/logo.png" alt="INKORA Logo" className="w-full h-full object-contain" />
           </div>       
           <span className="text-xl sm:text-2xl font-serif font-bold tracking-tight text-ink hidden xs:block logo_color">INKORA</span>
             </div>
@@ -3650,7 +3650,7 @@ const AboutPage = () => {
             />
             <div className="w-full h-full rounded-full overflow-hidden shadow-2xl border-8 border-white">
               <img 
-                src="./public/logo_background.png" 
+                src="/logo_background.png" 
                 alt="Founder" 
                 className="w-full h-full object-cover"
                 onError={(e) => {
@@ -3711,7 +3711,7 @@ Knowledge has the power to transform lives when the right ideas reach the right 
         <div className="relative group">
           <div className="aspect-square rounded-[3rem] overflow-hidden shadow-2xl">
             <img 
-              src="./public/CEO1.jpeg" 
+              src="/CEO1.jpeg" 
               alt="Founder Lifestyle" 
               className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-700"
               onError={(e) => {
