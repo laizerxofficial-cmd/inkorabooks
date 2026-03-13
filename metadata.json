@@ -1,0 +1,5 @@
+{
+  "name": "INKORA - Curated Books for Entrepreneurs",
+  "description": "A premium e-commerce platform for business and productivity books, featuring persistent SQLite database storage and real email verification via Resend.",
+  "requestFramePermissions": []
+}
