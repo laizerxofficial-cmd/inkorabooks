@@ -2479,11 +2479,11 @@ const CategorySection = ({
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
   
   const categories = [
-    { name: 'Entrepreneurship', color: 'bg-[#008080d5]', image: './public/C1.png', filter: 'Business' },
-    { name: 'Productivity', color: 'bg-[#ce8a46e3]', image: './public/C2.png', filter: 'Productivity' },
-    { name: 'Mindset', color: 'bg-[#b7a957cd]', image: './public/C3.png', filter: 'Mindset' },
-    { name: 'Money', color: 'bg-[#5eb77be1]', image: './public/C4.png', filter: 'Finance' },
-    { name: 'Bundles', color: 'bg-[#b465afd5]', image: './public/C5.png', filter: 'Bundles' },
+    { name: 'Entrepreneurship', color: 'bg-[#008080d5]', image: './C1.png', filter: 'Business' },
+    { name: 'Productivity', color: 'bg-[#ce8a46e3]', image: './C2.png', filter: 'Productivity' },
+    { name: 'Mindset', color: 'bg-[#b7a957cd]', image: './C3.png', filter: 'Mindset' },
+    { name: 'Money', color: 'bg-[#5eb77be1]', image: './C4.png', filter: 'Finance' },
+    { name: 'Bundles', color: 'bg-[#b465afd5]', image: './C5.png', filter: 'Bundles' },
   ];
 
   // Default active is Entrepreneurship (idx 0) if not hovering anything
