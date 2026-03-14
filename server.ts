@@ -250,6 +250,12 @@ async function startServer() {
     res.json({ bestSellers });
   });
 
+  // Admin Users
+  app.get('/api/admin/users', adminAuth, (req, res) => {
+    const users = db.prepare('SELECT id, email, fullName, profilePic, isAdmin, isVerified FROM users ORDER BY id DESC').all();
+    res.json(users);
+  });
+
   // Books Management
   app.get('/api/books', (req, res) => {
     const books = db.prepare('SELECT * FROM books').all();

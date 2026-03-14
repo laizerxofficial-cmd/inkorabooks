@@ -1547,7 +1547,8 @@ const AdminPage = ({ onLogout, books, bundles, fetchBooks, fetchBundles }: {
   const [filter, setFilter] = useState('all');
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
   const [analytics, setAnalytics] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<'orders' | 'analytics' | 'books' | 'bundles'>('orders');
+  const [activeTab, setActiveTab] = useState<'orders' | 'analytics' | 'books' | 'bundles' | 'users'>('orders');
+  const [users, setUsers] = useState<any[]>([]);
 
   const fetchOrders = () => {
     setLoading(true);
@@ -1569,11 +1570,20 @@ const AdminPage = ({ onLogout, books, bundles, fetchBooks, fetchBundles }: {
       .then(data => setAnalytics(data));
   };
 
+  const fetchUsers = () => {
+    fetch('/api/admin/users', {
+      headers: { 'Authorization': `Bearer ${localStorage.getItem('adminToken')}` }
+    })
+      .then(res => res.json())
+      .then(data => setUsers(Array.isArray(data) ? data : []));
+  };
+
   useEffect(() => {
     fetchOrders();
     fetchAnalytics();
     fetchBooks();
     fetchBundles();
+    fetchUsers();
   }, []);
 
   const updateStatus = async (orderId: number, newStatus: string) => {
@@ -1669,6 +1679,13 @@ const AdminPage = ({ onLogout, books, bundles, fetchBooks, fetchBundles }: {
           Manage Bundles
           {activeTab === 'bundles' && <motion.div layoutId="tab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-teal" />}
         </button>
+        <button 
+          onClick={() => setActiveTab('users')}
+          className={`pb-4 text-[10px] md:text-sm font-bold uppercase tracking-widest transition-all relative whitespace-nowrap ${activeTab === 'users' ? 'text-teal' : 'text-ink/40 hover:text-ink'}`}
+        >
+          Users
+          {activeTab === 'users' && <motion.div layoutId="tab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-teal" />}
+        </button>
       </div>
 
       {activeTab === 'books' && (
@@ -1677,6 +1694,58 @@ const AdminPage = ({ onLogout, books, bundles, fetchBooks, fetchBundles }: {
 
       {activeTab === 'bundles' && (
         <ManageBundles bundles={bundles} books={books} onUpdate={fetchBundles} />
+      )}
+
+      {activeTab === 'users' && (
+        <div className="space-y-8">
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-serif font-bold">Registered Users</h2>
+            <div className="text-sm text-ink/40">Total: {users.length}</div>
+          </div>
+          <div className="bg-white border border-ink/5 rounded-3xl overflow-hidden shadow-sm overflow-x-auto">
+            <table className="w-full text-left border-collapse min-w-[800px]">
+              <thead>
+                <tr className="bg-ink/5 text-[10px] font-bold text-ink/40 uppercase tracking-widest">
+                  <th className="px-8 py-4">ID</th>
+                  <th className="px-8 py-4">Name</th>
+                  <th className="px-8 py-4">Email</th>
+                  <th className="px-8 py-4">Verified</th>
+                  <th className="px-8 py-4">Admin</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-ink/5">
+                {users.map((user) => (
+                  <tr key={user.id} className="hover:bg-ink/5 transition-colors">
+                    <td className="px-8 py-6 font-mono text-xs text-ink/40">#{user.id.toString().padStart(5, '0')}</td>
+                    <td className="px-8 py-6">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full overflow-hidden bg-ink/5">
+                          <img src={user.profilePic} alt="" className="w-full h-full object-cover" />
+                        </div>
+                        <span className="font-bold">{user.fullName || 'N/A'}</span>
+                      </div>
+                    </td>
+                    <td className="px-8 py-6 text-sm">{user.email}</td>
+                    <td className="px-8 py-6">
+                      <span className={`text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest ${
+                        user.isVerified ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'
+                      }`}>
+                        {user.isVerified ? 'Verified' : 'Unverified'}
+                      </span>
+                    </td>
+                    <td className="px-8 py-6">
+                      <span className={`text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest ${
+                        user.isAdmin ? 'bg-purple-100 text-purple-600' : 'bg-gray-100 text-gray-600'
+                      }`}>
+                        {user.isAdmin ? 'Admin' : 'User'}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
       )}
 
       {activeTab === 'orders' && (
