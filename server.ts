@@ -1,6 +1,7 @@
 import express from 'express';
 import { createServer as createViteServer } from 'vite';
 import Database from 'better-sqlite3';
+import net from 'net';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
@@ -97,9 +98,50 @@ if (bundleCount.count === 0) {
 // Migration: Lowercase all existing user emails
 db.exec("UPDATE users SET email = LOWER(email)");
 
+async function findFreePort(startPort: number): Promise<number> {
+  const maxPort = startPort + 50;
+  for (let port = startPort; port <= maxPort; port += 1) {
+    const server = net.createServer();
+    let cleanup = () => {
+      try {
+        server.close();
+      } catch {
+        /* no-op */
+      }
+    };
+
+    try {
+      await new Promise<void>((resolve, reject) => {
+        server.once('error', reject);
+        server.once('listening', () => {
+          server.close(() => resolve());
+        });
+        server.listen(port, '0.0.0.0');
+      });
+      return port;
+    } catch {
+      cleanup();
+      // Port is in use, try next
+    }
+  }
+  throw new Error(`Unable to find a free port between ${startPort} and ${maxPort}`);
+}
+
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const requestedPort = Number(process.env.PORT) || 3000;
+  const PORT = await findFreePort(requestedPort);
+
+  if (PORT !== requestedPort) {
+    console.warn(`Port ${requestedPort} is in use, using ${PORT} instead.`);
+  }
+
+  const requestedHmrPort = Number(process.env.HMR_PORT) || 24678;
+  const HMR_PORT = await findFreePort(requestedHmrPort);
+
+  if (HMR_PORT !== requestedHmrPort) {
+    console.warn(`HMR port ${requestedHmrPort} is in use, using ${HMR_PORT} instead.`);
+  }
 
   app.use(express.json({ limit: '50mb' }));
   app.use(express.urlencoded({ limit: '50mb', extended: true }));
@@ -343,7 +385,12 @@ async function startServer() {
   // Vite middleware for development
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: {
+        middlewareMode: true,
+        hmr: {
+          port: HMR_PORT,
+        },
+      },
       appType: 'spa',
     });
     app.use(vite.middlewares);
@@ -356,6 +403,7 @@ async function startServer() {
 
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on http://localhost:${PORT}`);
+    console.log(`Vite HMR websocket running on port ${HMR_PORT}`);
   });
 }
 

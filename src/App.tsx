@@ -1,15 +1,16 @@
 import React, { useState, useEffect, FormEvent, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { BrowserRouter, Routes, Route, Link, useNavigate, useLocation, useParams } from 'react-router-dom';
 import Cropper, { Area, Point } from 'react-easy-crop';
-import { 
-  ShoppingBag, 
-  Menu, 
-  X, 
-  ArrowRight, 
-  CheckCircle2, 
-  Truck, 
-  ShieldCheck, 
-  MessageCircle, 
+import {
+  ShoppingBag,
+  Menu,
+  X,
+  ArrowRight,
+  CheckCircle2,
+  Truck,
+  ShieldCheck,
+  MessageCircle,
   Search,
   Plus,
   Minus,
@@ -92,6 +93,39 @@ async function getCroppedImg(
   );
 
   return canvas.toDataURL('image/jpeg');
+}
+
+class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { error: Error | null }> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { error: null };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { error };
+  }
+
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    console.error('Unhandled error in React app:', error, info);
+  }
+
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="min-h-screen flex flex-col items-center justify-center bg-white text-ink p-6">
+          <div className="max-w-lg w-full rounded-2xl border border-ink/10 shadow-lg p-8">
+            <h1 className="text-2xl font-bold mb-4">Something went wrong</h1>
+            <p className="mb-4">An unexpected error occurred while rendering the app.</p>
+            <pre className="text-xs bg-ink/5 rounded-lg p-4 overflow-x-auto">
+              {this.state.error?.stack || this.state.error?.message}
+            </pre>
+            <p className="mt-4 text-sm text-ink/60">Check the browser console for more details.</p>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
 }
 
 const ImageCropperModal = ({
@@ -221,18 +255,18 @@ const useWindowSize = () => {
   return windowSize;
 };
 
-const Navbar = ({ 
-  currentPage, 
-  setPage, 
-  cartCount, 
+const Navbar = ({
+  currentPage,
+  setPage,
+  cartCount,
   toggleCart,
   user,
   onLogout,
   onOpenAuth,
   onOpenSearch
-}: { 
-  currentPage: Page; 
-  setPage: (p: Page) => void; 
+}: {
+  currentPage: Page;
+  setPage: (p: Page) => void;
   cartCount: number;
   toggleCart: () => void;
   user: User | null;
@@ -244,6 +278,8 @@ const Navbar = ({
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const { width } = useWindowSize();
+  const location = useLocation();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 20);
@@ -251,71 +287,81 @@ const Navbar = ({
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const navLinks: { label: string; page: Page }[] = [
-    { label: 'Home', page: 'home' },
-    { label: 'Shop', page: 'shop' },
-    { label: 'Bundles', page: 'bundles' },
-    { label: 'About', page: 'about' },
-    { label: 'FAQ', page: 'faq' },
+  const navLinks: { label: string; path: string }[] = [
+    { label: 'Home', path: '/' },
+    { label: 'Shop', path: '/shop' },
+    { label: 'Bundles', path: '/bundles' },
+    { label: 'About', path: '/about' },
+    { label: 'FAQ', path: '/faq' },
   ];
 
+  const isActive = (path: string) => {
+    if (path === '/') {
+      return location.pathname === '/';
+    }
+    return location.pathname.startsWith(path);
+  };
+
   return (
-    <motion.nav 
+    <motion.nav
       initial={{ y: -100 }}
       animate={{ y: 0 }}
       transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${isScrolled ? 'bg-white/70 backdrop-blur-xl py-4 shadow-sm' : 'bg-transparent py-8'}`}
     >
       <div className="max-w-7xl 2xl:max-w-[1600px] mx-auto px-4 sm:px-6 flex items-center justify-between">
-        <motion.div 
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
+        <Link
+          to="/"
           className="flex items-center gap-2 sm:gap-3 cursor-pointer group"
-          onClick={() => setPage('home')}
         >
-          <div className="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center group-hover:scale-110 transition-transform">
-            <img src="/logo.png" alt="INKORA Logo" className="w-full h-full object-contain" />
-          </div>       
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+          >
+            <div className="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <img src="/logo.png" alt="INKORA Logo" className="w-full h-full object-contain" />
+            </div>
+          </motion.div>
           <span className="text-xl sm:text-2xl font-serif font-bold tracking-tight text-ink hidden xs:block logo_color">INKORA</span>
-        </motion.div>
+        </Link>
 
         {/* Desktop Nav */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           className="hidden md:flex items-center gap-2 bg-ink/5 p-1.5 rounded-full backdrop-blur-md border border-ink/5 relative"
         >
           {navLinks.map((link) => (
-            <button
-              key={link.page}
-              onClick={() => setPage(link.page)}
-              className={`px-6 py-2.5 rounded-full text-sm font-bold transition-all relative z-10 ${currentPage === link.page ? 'text-ink' : 'text-ink/50 hover:text-ink'}`}
+            <Link
+              key={link.path}
+              to={link.path}
+              className={`px-6 py-2.5 rounded-full text-sm font-bold transition-all relative z-10 ${isActive(link.path) ? 'text-ink' : 'text-ink/50 hover:text-ink'}`}
             >
               {link.label}
-              {currentPage === link.page && (
+              {isActive(link.path) && (
                 <motion.div
                   layoutId="nav-pill"
                   className="absolute inset-0 bg-white rounded-full shadow-sm -z-10"
                   transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
                 />
               )}
-            </button>
+            </Link>
           ))}
         </motion.div>
 
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
           className="flex items-center gap-2 sm:gap-4"
         >
-          <button 
+          <button
             onClick={onOpenSearch}
             className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border border-ink/5 flex items-center justify-center text-ink/70 hover:text-teal hover:border-teal transition-all"
           >
             <Search size={18} className="sm:w-5 sm:h-5" />
           </button>
-          
-          <button 
+
+          <button
             onClick={toggleCart}
             className="relative w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-ink text-white flex items-center justify-center hover:bg-teal transition-all shadow-lg shadow-ink/10"
           >
@@ -329,14 +375,14 @@ const Navbar = ({
 
           <div className="relative">
             {user ? (
-              <button 
+              <button
                 onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
                 className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border border-ink/5 overflow-hidden hover:border-teal transition-all"
               >
                 <img src={user.profilePic} alt="Profile" className="w-full h-full object-cover" />
               </button>
             ) : (
-              <button 
+              <button
                 onClick={onOpenAuth}
                 className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-bronze text-white flex items-center justify-center hover:bg-bronze/90 transition-all shadow-lg shadow-bronze/10"
               >
@@ -356,14 +402,15 @@ const Navbar = ({
                     <p className="text-xs font-bold text-ink/40 uppercase tracking-widest">Logged in as</p>
                     <p className="font-bold truncate">{user.email}</p>
                   </div>
-                  <button 
-                    onClick={() => { setPage('profile'); setIsUserMenuOpen(false); }}
+                  <Link
+                    to="/profile"
                     className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-ink/5 transition-colors text-sm font-bold"
+                    onClick={() => setIsUserMenuOpen(false)}
                   >
                     <UserIcon size={18} className="text-teal" />
                     My Profile
-                  </button>
-                  <button 
+                  </Link>
+                  <button
                     onClick={() => { onLogout(); setIsUserMenuOpen(false); }}
                     className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-red-50 text-red-500 transition-colors text-sm font-bold"
                   >
@@ -376,21 +423,21 @@ const Navbar = ({
           </div>
 
           {/* Liquid Crystal Hamburger Icon */}
-          <button 
+          <button
             className="md:hidden relative w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-white/10 backdrop-blur-xl border border-white/20 flex items-center justify-center text-ink overflow-hidden group transition-all hover:bg-white/20 active:scale-95"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           >
             <div className="absolute inset-0 bg-gradient-to-br from-teal/20 to-bronze/20 opacity-0 group-hover:opacity-100 transition-opacity" />
             <div className="relative flex flex-col gap-1 sm:gap-1.5 items-center justify-center w-5 h-5 sm:w-6 sm:h-6">
-              <motion.span 
+              <motion.span
                 animate={isMobileMenuOpen ? { rotate: 45, y: width < 640 ? 5 : 7, width: '100%' } : { rotate: 0, y: 0, width: '70%' }}
                 className="h-0.5 bg-ink rounded-full origin-center transition-all duration-300"
               />
-              <motion.span 
+              <motion.span
                 animate={isMobileMenuOpen ? { opacity: 0, x: 20 } : { opacity: 1, x: 0, width: '100%' }}
                 className="h-0.5 bg-ink rounded-full transition-all duration-300"
               />
-              <motion.span 
+              <motion.span
                 animate={isMobileMenuOpen ? { rotate: -45, y: width < 640 ? -5 : -7, width: '100%' } : { rotate: 0, y: 0, width: '40%' }}
                 className="h-0.5 bg-ink rounded-full origin-center transition-all duration-300"
               />
@@ -411,18 +458,18 @@ const Navbar = ({
             <div className="flex flex-col p-6 gap-2">
               {navLinks.map((link, idx) => (
                 <motion.button
-                  key={link.page}
+                  key={link.path}
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: idx * 0.05 }}
                   onClick={() => {
-                    setPage(link.page);
+                    navigate(link.path);
                     setIsMobileMenuOpen(false);
                   }}
-                  className={`text-xl font-serif font-bold p-4 rounded-2xl transition-all text-left flex items-center justify-between group ${currentPage === link.page ? 'bg-teal/10 text-teal' : 'text-ink/70 hover:bg-ink/5'}`}
+                  className={`text-xl font-serif font-bold p-4 rounded-2xl transition-all text-left flex items-center justify-between group ${isActive(link.path) ? 'bg-teal/10 text-teal' : 'text-ink/70 hover:bg-ink/5'}`}
                 >
                   {link.label}
-                  <ArrowRight size={18} className={`transition-transform ${currentPage === link.page ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-4 group-hover:opacity-100 group-hover:translate-x-0'}`} />
+                  <ArrowRight size={18} className={`transition-transform ${isActive(link.path) ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-4 group-hover:opacity-100 group-hover:translate-x-0'}`} />
                 </motion.button>
               ))}
               {!user && (
@@ -687,7 +734,6 @@ const SearchOverlay = ({
                     exit={{ opacity: 0, scale: 0.9 }}
                     onClick={() => {
                       setSelectedBook(book);
-                      setPage('product');
                       onClose();
                     }}
                     className="flex gap-6 p-6 rounded-[2rem] bg-white border border-ink/5 hover:border-teal/20 hover:shadow-2xl hover:shadow-teal/5 cursor-pointer transition-all group"
@@ -2283,6 +2329,7 @@ const ProfilePage = ({ user, onUpdate }: { user: User; onUpdate: (u: User) => vo
 };
 
 const Footer = ({ setPage }: { setPage: (p: Page) => void }) => {
+  const navigate = useNavigate();
   return (
     <footer className="bg-ink text-white pt-32 pb-12 relative overflow-hidden">
       {/* Newsletter Floating Box */}
@@ -2328,7 +2375,7 @@ const Footer = ({ setPage }: { setPage: (p: Page) => void }) => {
           <div className="space-y-8">
             <div className="flex items-center gap-3">
                         <div className="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center group-hover:scale-110 transition-transform">
-            <img src="/logo.png" alt="INKORA Logo" className="w-full h-full object-contain" />
+            npm run dev            <img src="/logo.png" alt="INKORA Logo" className="w-full h-full object-contain" />
           </div>       
           <span className="text-xl sm:text-2xl font-serif font-bold tracking-tight text-ink hidden xs:block logo_color">INKORA</span>
             </div>
@@ -2359,7 +2406,7 @@ const Footer = ({ setPage }: { setPage: (p: Page) => void }) => {
               {['All Books', 'Featured Bundles', 'Best Sellers', 'New Arrivals'].map(item => (
                 <li key={item}>
                   <button 
-                    onClick={() => setPage('shop')}
+                    onClick={() => navigate('/shop')}
                     className="text-white/40 hover:text-white transition-all text-lg font-medium hover:translate-x-2 flex items-center gap-2 group"
                   >
                     <ChevronRight size={16} className="opacity-0 group-hover:opacity-100 transition-all -ml-6 group-hover:ml-0" />
@@ -2374,16 +2421,16 @@ const Footer = ({ setPage }: { setPage: (p: Page) => void }) => {
             <h4 className="text-xs font-bold uppercase tracking-[0.3em] text-teal">Company</h4>
             <ul className="space-y-4">
               {[
-                { label: 'Our Mission', page: 'about' as Page },
-                { label: 'FAQ', page: 'faq' as Page },
-                { label: 'Privacy Policy', page: 'privacy' as Page },
-                { label: 'Terms of Service', page: 'terms' as Page },
-                { label: 'Shipping Policy', page: 'shipping' as Page },
-                { label: 'Refund Policy', page: 'refund' as Page }
+                { label: 'Our Mission', path: '/about' },
+                { label: 'FAQ', path: '/faq' },
+                { label: 'Privacy Policy', path: '/privacy' },
+                { label: 'Terms of Service', path: '/terms' },
+                { label: 'Shipping Policy', path: '/shipping' },
+                { label: 'Refund Policy', path: '/refund' }
               ].map(item => (
                 <li key={item.label}>
                   <button 
-                    onClick={() => setPage(item.page)}
+                    onClick={() => navigate(item.path)}
                     className="text-white/40 hover:text-white transition-all text-lg font-medium hover:translate-x-2 flex items-center gap-2 group"
                   >
                     <ChevronRight size={16} className="opacity-0 group-hover:opacity-100 transition-all -ml-6 group-hover:ml-0" />
@@ -2422,7 +2469,7 @@ const Footer = ({ setPage }: { setPage: (p: Page) => void }) => {
         <div className="pt-12 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-8">
           <p className="text-white/20 text-sm">© 2024 INKORA. All rights reserved.</p>
           <div className="flex items-center gap-8">
-            <button onClick={() => setPage('admin')} className="text-[10px] font-bold uppercase tracking-widest text-white/20 hover:text-teal transition-colors">Admin Portal</button>
+            <button onClick={() => navigate('/admin-login')} className="text-[10px] font-bold uppercase tracking-widest text-white/20 hover:text-teal transition-colors">Admin Portal</button>
             <div className="flex items-center gap-2 text-white/20">
               <Globe size={14} />
               <span className="text-xs font-bold uppercase tracking-widest">English (US)</span>
@@ -4054,10 +4101,127 @@ const FAQPage = ({ setPage }: { setPage: (p: Page) => void }) => {
   );
 };
 
-// --- Main App ---
+// --- Page Components for Routing ---
 
-export default function App() {
-  const [page, setPage] = useState<Page>('home');
+const HomePageWrapper = ({ books, bundles, addToCart, setSelectedBook }: { books: Book[], bundles: Bundle[], addToCart: (item: Book | Bundle, type: 'book' | 'bundle') => void, setSelectedBook: (book: Book) => void }) => {
+  const navigate = useNavigate();
+  const [activeCategory, setActiveCategory] = useState('All');
+
+  return (
+    <HomePage
+      setPage={(page: string) => navigate(`/${page === 'home' ? '' : page}`)}
+      setSelectedBook={setSelectedBook}
+      addToCart={addToCart}
+      onCategoryClick={(cat: string) => {
+        setActiveCategory(cat);
+        navigate('/shop');
+      }}
+      books={books}
+      bundles={bundles}
+    />
+  );
+};
+
+const ShopPageWrapper = ({ books, addToCart, setSelectedBook }: { books: Book[], addToCart: (item: Book | Bundle, type: 'book' | 'bundle') => void, setSelectedBook: (book: Book) => void }) => {
+  const navigate = useNavigate();
+  const [activeCategory, setActiveCategory] = useState('All');
+
+  return (
+    <ShopPage
+      setPage={(page: string) => navigate(`/${page === 'home' ? '' : page}`)}
+      setSelectedBook={setSelectedBook}
+      addToCart={addToCart}
+      activeCategory={activeCategory}
+      setActiveCategory={setActiveCategory}
+      books={books}
+    />
+  );
+};
+
+const BundlePageWrapper = ({ bundles, books, addToCart }: { bundles: Bundle[], books: Book[], addToCart: (item: Book | Bundle, type: 'book' | 'bundle') => void }) => {
+  return <BundlePage addToCart={addToCart} bundles={bundles} books={books} />;
+};
+
+const ProductPageWrapper = ({ books, addToCart }: { books: Book[], addToCart: (item: Book | Bundle, type: 'book' | 'bundle') => void }) => {
+  const navigate = useNavigate();
+  const { id } = useParams<{ id: string }>();
+  const book = books.find(b => b.id === id);
+
+  if (!book) {
+    return <div>Book not found</div>;
+  }
+
+  return (
+    <ProductPage
+      book={book}
+      addToCart={addToCart}
+      setPage={(page: string) => navigate(`/${page === 'home' ? '' : page}`)}
+      setSelectedBook={() => {}}
+      books={books}
+    />
+  );
+};
+
+const CheckoutPageWrapper = ({ cartItems, user }: { cartItems: CartItem[], user: User | null }) => {
+  const navigate = useNavigate();
+  const [isAuthOpen, setIsAuthOpen] = useState(false);
+
+  return (
+    <>
+      <CheckoutPage
+        cartItems={cartItems}
+        setPage={(page: string) => navigate(`/${page === 'home' ? '' : page}`)}
+        user={user}
+        onOpenAuth={() => setIsAuthOpen(true)}
+      />
+      <AuthModals
+        isOpen={isAuthOpen}
+        onClose={() => setIsAuthOpen(false)}
+        onLogin={() => {}}
+      />
+    </>
+  );
+};
+
+const AboutPageWrapper = () => <AboutPage />;
+
+const FAQPageWrapper = () => {
+  const navigate = useNavigate();
+  return <FAQPage setPage={(page: string) => navigate(`/${page === 'home' ? '' : page}`)} />;
+};
+
+const PolicyPageWrapper = ({ type }: { type: 'privacy' | 'terms' | 'shipping' | 'refund' }) => <PolicyPage type={type} />;
+
+const AdminLoginWrapper = () => {
+  const navigate = useNavigate();
+  return <AdminLogin onLogin={() => navigate('/admin')} />;
+};
+
+const AdminPageWrapper = ({ books, bundles, fetchBooks, fetchBundles }: { books: Book[], bundles: Bundle[], fetchBooks: () => void, fetchBundles: () => void }) => {
+  const navigate = useNavigate();
+  return (
+    <AdminPage
+      onLogout={() => navigate('/')}
+      books={books}
+      bundles={bundles}
+      fetchBooks={fetchBooks}
+      fetchBundles={fetchBundles}
+    />
+  );
+};
+
+const ProfilePageWrapper = ({ user, onUpdate }: { user: User | null, onUpdate: (user: User) => void }) => {
+  const navigate = useNavigate();
+  if (!user) {
+    navigate('/');
+    return null;
+  }
+  return <ProfilePage user={user} onUpdate={onUpdate} />;
+};
+
+// --- Main App Component ---
+
+function AppContent() {
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -4074,10 +4238,11 @@ export default function App() {
       localStorage.removeItem('user');
     }
   };
-  const [activeCategory, setActiveCategory] = useState('All');
+
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(!!localStorage.getItem('adminToken'));
   const [books, setBooks] = useState<Book[]>([]);
   const [bundles, setBundles] = useState<Bundle[]>([]);
+  const navigate = useNavigate();
 
   const fetchBooks = () => {
     fetch('/api/books')
@@ -4096,18 +4261,13 @@ export default function App() {
     fetchBundles();
   }, []);
 
-  // Scroll to top on page change
-  useEffect(() => {
-    window.scrollTo(0, 0);
-  }, [page]);
-
   const addToCart = (item: Book | Bundle, type: 'book' | 'bundle') => {
     setCartItems(prev => {
       const existing = prev.find(i => i.id === item.id && i.type === type);
       if (existing) {
         return prev.map(i => (i.id === item.id && i.type === type) ? { ...i, quantity: i.quantity + 1 } : i);
       }
-      
+
       let finalItem = item;
       if (type === 'bundle') {
         const bundle = item as Bundle;
@@ -4117,7 +4277,7 @@ export default function App() {
         });
         finalItem = { ...bundle, books: populatedBooks as Book[] };
       }
-      
+
       return [...prev, { id: item.id, type, item: finalItem, quantity: 1 }];
     });
     setIsCartOpen(true);
@@ -4139,143 +4299,77 @@ export default function App() {
 
   const cartCount = cartItems.reduce((acc, item) => acc + item.quantity, 0);
 
-  const handleAdminLogout = () => {
-    localStorage.removeItem('adminToken');
-    setIsAdminAuthenticated(false);
-    setPage('home');
-  };
-
-  const renderPage = () => {
-    switch (page) {
-      case 'home':
-        return (
-          <HomePage 
-            setPage={setPage} 
-            setSelectedBook={setSelectedBook} 
-            addToCart={addToCart} 
-            onCategoryClick={(cat) => {
-              setActiveCategory(cat);
-              setPage('shop');
-            }}
-            books={books}
-            bundles={bundles}
-          />
-        );
-      case 'shop':
-        return (
-          <ShopPage 
-            setPage={setPage} 
-            setSelectedBook={setSelectedBook} 
-            addToCart={addToCart}
-            activeCategory={activeCategory}
-            setActiveCategory={setActiveCategory}
-            books={books}
-          />
-        );
-      case 'bundles':
-        return <BundlePage addToCart={addToCart} bundles={bundles} books={books} />;
-      case 'product':
-        return selectedBook ? <ProductPage book={selectedBook} addToCart={addToCart} setPage={setPage} setSelectedBook={setSelectedBook} books={books} /> : <HomePage setPage={setPage} setSelectedBook={setSelectedBook} addToCart={addToCart} onCategoryClick={(cat) => { setActiveCategory(cat); setPage('shop'); }} books={books} bundles={bundles} />;
-      case 'checkout':
-        return <CheckoutPage cartItems={cartItems} setPage={setPage} user={user} onOpenAuth={() => setIsAuthOpen(true)} />;
-      case 'about':
-        return <AboutPage />;
-      case 'faq':
-        return <FAQPage setPage={setPage} />;
-      case 'privacy':
-        return <PolicyPage type="privacy" />;
-      case 'terms':
-        return <PolicyPage type="terms" />;
-      case 'shipping':
-        return <PolicyPage type="shipping" />;
-      case 'refund':
-        return <PolicyPage type="refund" />;
-      case 'admin-login':
-        return <AdminLogin onLogin={() => { setIsAdminAuthenticated(true); setPage('admin'); }} />;
-      case 'admin':
-        return isAdminAuthenticated ? (
-          <AdminPage 
-            onLogout={handleAdminLogout} 
-            books={books} 
-            bundles={bundles} 
-            fetchBooks={fetchBooks} 
-            fetchBundles={fetchBundles} 
-          />
-        ) : (
-          <AdminLogin onLogin={() => { setIsAdminAuthenticated(true); setPage('admin'); }} />
-        );
-      case 'profile':
-        return user ? <ProfilePage user={user} onUpdate={setUser} /> : <HomePage setPage={setPage} setSelectedBook={setSelectedBook} addToCart={addToCart} onCategoryClick={(cat) => { setActiveCategory(cat); setPage('shop'); }} books={books} bundles={bundles} />;
-      default:
-        return <HomePage setPage={setPage} setSelectedBook={setSelectedBook} addToCart={addToCart} onCategoryClick={(cat) => { setActiveCategory(cat); setPage('shop'); }} books={books} bundles={bundles} />;
-    }
-  };
-
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   return (
     <div className="min-h-screen flex flex-col selection:bg-teal selection:text-white">
-      <Navbar 
-        currentPage={page} 
-        setPage={setPage} 
-        cartCount={cartCount} 
-        toggleCart={() => setIsCartOpen(true)} 
+      <Navbar
+        currentPage="home" // This will be handled by the router
+        setPage={() => {}} // Not used anymore
+        cartCount={cartCount}
+        toggleCart={() => setIsCartOpen(true)}
         user={user}
         onLogout={() => handleSetUser(null)}
         onOpenAuth={() => setIsAuthOpen(true)}
         onOpenSearch={() => setIsSearchOpen(true)}
       />
-      
+
       <main className="flex-1 overflow-x-hidden">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={page}
-            initial={{ opacity: 0, x: 50 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -50 }}
-            transition={{ 
-              duration: 0.5, 
-              ease: [0.16, 1, 0.3, 1] 
-            }}
-          >
-            {renderPage()}
-          </motion.div>
-        </AnimatePresence>
+        <Routes>
+          <Route path="/" element={<HomePageWrapper books={books} bundles={bundles} addToCart={addToCart} setSelectedBook={setSelectedBook} />} />
+          <Route path="/shop" element={<ShopPageWrapper books={books} addToCart={addToCart} setSelectedBook={setSelectedBook} />} />
+          <Route path="/bundles" element={<BundlePageWrapper bundles={bundles} books={books} addToCart={addToCart} />} />
+          <Route path="/product/:id" element={<ProductPageWrapper books={books} addToCart={addToCart} />} />
+          <Route path="/checkout" element={<CheckoutPageWrapper cartItems={cartItems} user={user} />} />
+          <Route path="/about" element={<AboutPageWrapper />} />
+          <Route path="/faq" element={<FAQPageWrapper />} />
+          <Route path="/privacy" element={<PolicyPageWrapper type="privacy" />} />
+          <Route path="/terms" element={<PolicyPageWrapper type="terms" />} />
+          <Route path="/shipping" element={<PolicyPageWrapper type="shipping" />} />
+          <Route path="/refund" element={<PolicyPageWrapper type="refund" />} />
+          <Route path="/admin-login" element={<AdminLoginWrapper />} />
+          <Route path="/admin" element={<AdminPageWrapper books={books} bundles={bundles} fetchBooks={fetchBooks} fetchBundles={fetchBundles} />} />
+          <Route path="/profile" element={<ProfilePageWrapper user={user} onUpdate={setUser} />} />
+        </Routes>
       </main>
 
-      <Footer setPage={setPage} />
+      <Footer setPage={() => {}} /> {/* Footer navigation updated to use navigate */}
 
-      <CartDrawer 
-        isOpen={isCartOpen} 
-        onClose={() => setIsCartOpen(false)} 
+      <CartDrawer
+        isOpen={isCartOpen}
+        onClose={() => setIsCartOpen(false)}
         cartItems={cartItems}
         updateQuantity={updateQuantity}
         removeItem={removeItem}
         onCheckout={() => {
           setIsCartOpen(false);
-          setPage('checkout');
+          navigate('/checkout');
         }}
       />
 
-      <SearchOverlay 
-        isOpen={isSearchOpen} 
-        onClose={() => setIsSearchOpen(false)} 
-        setPage={setPage} 
-        setSelectedBook={setSelectedBook} 
+      <SearchOverlay
+        isOpen={isSearchOpen}
+        onClose={() => setIsSearchOpen(false)}
+        setPage={() => {}} // Not used anymore
+        setSelectedBook={(book) => {
+          setSelectedBook(book);
+          navigate(`/product/${book.id}`);
+          setIsSearchOpen(false);
+        }}
         books={books}
       />
 
-      <AuthModals 
-        isOpen={isAuthOpen} 
-        onClose={() => setIsAuthOpen(false)} 
-        onLogin={handleSetUser} 
+      <AuthModals
+        isOpen={isAuthOpen}
+        onClose={() => setIsAuthOpen(false)}
+        onLogin={handleSetUser}
       />
 
       {/* WhatsApp Floating Button */}
-      <motion.a 
-        href="https://wa.me/94743333932" 
-        target="_blank" 
+      <motion.a
+        href="https://wa.me/94743333932"
+        target="_blank"
         rel="noopener noreferrer"
         initial={{ scale: 0, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
@@ -4292,5 +4386,15 @@ export default function App() {
         </span>
       </motion.a>
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <ErrorBoundary>
+        <AppContent />
+      </ErrorBoundary>
+    </BrowserRouter>
   );
 }
