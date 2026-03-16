@@ -250,11 +250,38 @@ async function startServer() {
     }
   });
 
+  app.delete('/api/admin/orders/:id', adminAuth, (req, res) => {
+    const { id } = req.params;
+    try {
+      const result = db.prepare('DELETE FROM orders WHERE id = ?').run(id);
+      if (result.changes === 0) {
+        return res.status(404).json({ success: false, message: 'Order not found' });
+      }
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(400).json({ success: false, message: error.message });
+    }
+  });
+
   // User Profile
   app.get('/api/user/orders/:userId', (req, res) => {
     const { userId } = req.params;
     const orders = db.prepare('SELECT * FROM orders WHERE userId = ? ORDER BY createdAt DESC').all(userId);
     res.json(orders);
+  });
+
+  app.delete('/api/orders/:id', (req, res) => {
+    const { id } = req.params;
+    const { userId } = req.query;
+    try {
+      const result = db.prepare('DELETE FROM orders WHERE id = ? AND userId = ?').run(id, userId);
+      if (result.changes === 0) {
+        return res.status(404).json({ success: false, message: 'Order not found or not authorized' });
+      }
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(400).json({ success: false, message: error.message });
+    }
   });
 
   app.patch('/api/user/profile', (req, res) => {

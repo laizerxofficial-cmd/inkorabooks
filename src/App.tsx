@@ -1653,6 +1653,32 @@ const AdminPage = ({ onLogout, books, bundles, fetchBooks, fetchBundles }: {
     }
   };
 
+  const handleDeleteOrder = async (orderId: number) => {
+    if (!confirm('Are you sure you want to delete this order? This action cannot be undone.')) {
+      return;
+    }
+    
+    try {
+      const res = await fetch(`/api/admin/orders/${orderId}`, {
+        method: 'DELETE',
+        headers: { 
+          'Authorization': `Bearer ${localStorage.getItem('adminToken')}`
+        }
+      });
+      const data = await res.json();
+      if (data.success) {
+        fetchOrders();
+        if (selectedOrder?.id === orderId) {
+          setSelectedOrder(null);
+        }
+      } else {
+        alert(data.message);
+      }
+    } catch (err) {
+      alert('Failed to delete order');
+    }
+  };
+
   const filteredOrders = filter === 'all' ? orders : orders.filter(o => o.status === filter);
   
   const stats = {
@@ -1865,16 +1891,25 @@ const AdminPage = ({ onLogout, books, bundles, fetchBooks, fetchBundles }: {
                           </span>
                         </td>
                         <td className="px-8 py-6" onClick={(e) => e.stopPropagation()}>
-                          <select 
-                            value={order.status}
-                            onChange={(e) => updateStatus(order.id, e.target.value)}
-                            className="bg-ink/5 border-none rounded-lg px-3 py-1.5 text-xs font-bold focus:ring-2 focus:ring-teal/20 transition-all cursor-pointer"
-                          >
-                            <option value="pending">Pending</option>
-                            <option value="shipped">Shipped</option>
-                            <option value="delivered">Delivered</option>
-                            <option value="cancelled">Cancelled</option>
-                          </select>
+                          <div className="flex items-center gap-2">
+                            <select 
+                              value={order.status}
+                              onChange={(e) => updateStatus(order.id, e.target.value)}
+                              className="bg-ink/5 border-none rounded-lg px-3 py-1.5 text-xs font-bold focus:ring-2 focus:ring-teal/20 transition-all cursor-pointer"
+                            >
+                              <option value="pending">Pending</option>
+                              <option value="shipped">Shipped</option>
+                              <option value="delivered">Delivered</option>
+                              <option value="cancelled">Cancelled</option>
+                            </select>
+                            <button
+                              onClick={() => handleDeleteOrder(order.id)}
+                              className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                              title="Delete Order"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -2124,6 +2159,26 @@ const ProfilePage = ({ user, onUpdate }: { user: User; onUpdate: (u: User) => vo
     }
   };
 
+  const handleRemoveOrder = async (orderId: number) => {
+    if (!confirm('Are you sure you want to remove this order? This action cannot be undone.')) {
+      return;
+    }
+    
+    try {
+      const res = await fetch(`/api/orders/${orderId}?userId=${user.id}`, {
+        method: 'DELETE'
+      });
+      const data = await res.json();
+      if (data.success) {
+        setOrders(orders.filter(order => order.id !== orderId));
+      } else {
+        alert(data.message);
+      }
+    } catch (err) {
+      alert('Failed to remove order');
+    }
+  };
+
   return (
     <div className="pt-24 md:pt-32 pb-20 md:pb-32 max-w-7xl mx-auto px-4 md:px-6 space-y-12 md:space-y-16">
       <div className="flex flex-col md:flex-row items-center gap-8 md:gap-12 bg-white p-6 md:p-12 rounded-[2rem] md:rounded-[3rem] border border-ink/5 shadow-2xl shadow-ink/5">
@@ -2223,14 +2278,23 @@ const ProfilePage = ({ user, onUpdate }: { user: User; onUpdate: (u: User) => vo
                           {new Date(order.createdAt).toLocaleDateString(undefined, { dateStyle: 'long' })}
                         </p>
                       </div>
-                      <span className={`text-[10px] font-bold px-4 py-1.5 rounded-full uppercase tracking-widest ${
-                        order.status === 'pending' ? 'bg-orange-50 text-orange-600' :
-                        order.status === 'shipped' ? 'bg-blue-50 text-blue-600' :
-                        order.status === 'delivered' ? 'bg-green-50 text-green-600' :
-                        'bg-red-50 text-red-600'
-                      }`}>
-                        {order.status}
-                      </span>
+                      <div className="flex items-center gap-3">
+                        <span className={`text-[10px] font-bold px-4 py-1.5 rounded-full uppercase tracking-widest ${
+                          order.status === 'pending' ? 'bg-orange-50 text-orange-600' :
+                          order.status === 'shipped' ? 'bg-blue-50 text-blue-600' :
+                          order.status === 'delivered' ? 'bg-green-50 text-green-600' :
+                          'bg-red-50 text-red-600'
+                        }`}>
+                          {order.status}
+                        </span>
+                        <button
+                          onClick={() => handleRemoveOrder(order.id)}
+                          className="p-3 text-red-500 hover:bg-red-50 rounded-xl transition-colors border border-red-100 hover:border-red-200"
+                          title="Remove Order"
+                        >
+                          <Trash2 size={20} />
+                        </button>
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -2375,7 +2439,7 @@ const Footer = ({ setPage }: { setPage: (p: Page) => void }) => {
           <div className="space-y-8">
             <div className="flex items-center gap-3">
                         <div className="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center group-hover:scale-110 transition-transform">
-            npm run dev            <img src="/logo.png" alt="INKORA Logo" className="w-full h-full object-contain" />
+                          <img src="/logo.png" alt="INKORA Logo" className="w-full h-full object-contain" />
           </div>       
           <span className="text-xl sm:text-2xl font-serif font-bold tracking-tight text-ink hidden xs:block logo_color">INKORA</span>
             </div>
@@ -2384,9 +2448,9 @@ const Footer = ({ setPage }: { setPage: (p: Page) => void }) => {
             </p>
             <div className="flex gap-6">
               {[
-                { icon: <Twitter size={20} />, label: 'Twitter', href: "https://twitter.com/laizerxofficial" },
+                { icon: <Twitter size={20} />, label: 'Twitter', href: "#" },
                 { icon: <Instagram size={20} />, label: 'Instagram', href: "https://instagram.com/inkora_books" },
-                { icon: <Facebook size={20} />, label: 'Facebook', href: "https://web.facebook.com/profile.php?id=61584088526260" }
+                { icon: <Facebook size={20} />, label: 'Facebook', href: "https://web.facebook.com/people/Inkora-Books/61584088526260/" }
               ].map((social, i) => (
                 <motion.a 
                   key={i}
@@ -2692,7 +2756,8 @@ const HomePage = ({
   addToCart,
   onCategoryClick,
   books,
-  bundles
+  bundles,
+  navigate
 }: { 
   setPage: (p: Page) => void; 
   setSelectedBook: (b: Book) => void;
@@ -2700,6 +2765,7 @@ const HomePage = ({
   onCategoryClick: (cat: string) => void;
   books: Book[];
   bundles: Bundle[];
+  navigate: (path: string) => void;
 }) => {
   return (
     <div className="space-y-32 pb-32">
@@ -2774,8 +2840,7 @@ const HomePage = ({
             <BookStack 
               books={books.slice(0, 5)} 
               onBookClick={(book) => {
-                setSelectedBook(book);
-                setPage('product');
+                navigate('/product/' + book.id);
               }} 
             />
           </motion.div>
@@ -2900,8 +2965,7 @@ const HomePage = ({
                 <div 
                   className="aspect-[3/4] rounded-xl overflow-hidden cursor-pointer relative shadow-sm group-hover:shadow-2xl group-hover:shadow-teal/10 transition-all duration-500"
                   onClick={() => {
-                    setSelectedBook(book);
-                    setPage('product');
+                    navigate('/product/' + book.id);
                   }}
                 >
                   <img src={book.image} alt={book.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
@@ -3037,7 +3101,8 @@ const ShopPage = ({
   setPage,
   activeCategory,
   setActiveCategory,
-  books
+  books,
+  navigate
 }: { 
   addToCart: (item: Book | Bundle, type: 'book' | 'bundle') => void;
   setSelectedBook: (b: Book) => void;
@@ -3045,6 +3110,7 @@ const ShopPage = ({
   activeCategory: string;
   setActiveCategory: (cat: string) => void;
   books: Book[];
+  navigate: (path: string) => void;
 }) => {
   const categories = ['All', 'Business', 'Productivity', 'Mindset', 'Finance', 'Biography'];
 
@@ -3090,8 +3156,7 @@ const ShopPage = ({
               <div 
                 className="aspect-[3/4] rounded-[2rem] overflow-hidden cursor-pointer relative shadow-sm hover:shadow-2xl transition-all duration-500"
                 onClick={() => {
-                  setSelectedBook(book);
-                  setPage('product');
+                  navigate('/product/' + book.id);
                 }}
               >
                 <motion.img 
@@ -3425,14 +3490,20 @@ const CheckoutPage = ({
   cartItems, 
   setPage,
   user,
-  onOpenAuth
+  onOpenAuth,
+  navigate,
+  clearCart
 }: { 
   cartItems: CartItem[]; 
   setPage: (p: Page) => void;
   user: User | null;
   onOpenAuth: () => void;
+  navigate: (path: string) => void;
+  clearCart: () => void;
 }) => {
   const [step, setStep] = useState(1);
+  const [isOrderSuccess, setIsOrderSuccess] = useState(false);
+  const [orderPlaced, setOrderPlaced] = useState(false);
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -3450,6 +3521,10 @@ const CheckoutPage = ({
       setFormData(prev => ({ ...prev, email: user.email }));
     }
   }, [user]);
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [step]);
 
   const subtotal = cartItems.reduce((acc, item) => {
     const price = item.type === 'book' 
@@ -3485,8 +3560,8 @@ const CheckoutPage = ({
       });
       const data = await res.json();
       if (data.success) {
-        alert('Order placed successfully! We will contact you shortly.');
-        setPage('home');
+        setOrderPlaced(true);
+        clearCart();
       } else {
         alert(data.message);
       }
@@ -3496,6 +3571,25 @@ const CheckoutPage = ({
   };
 
   if (cartItems.length === 0) {
+    if (orderPlaced) {
+      return (
+        <div className="pt-40 pb-40 text-center space-y-8">
+          <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto">
+            <CheckCircle2 size={40} className="text-green-600" />
+          </div>
+          <div className="space-y-2">
+            <h1 className="text-3xl font-serif font-bold">Order Placed Successfully!</h1>
+            <p className="text-ink/60">Thank you for your purchase. We'll contact you shortly with the next steps.</p>
+          </div>
+          <button 
+            onClick={() => navigate('/')}
+            className="bg-teal text-white px-8 py-3 rounded-xl font-bold hover:bg-teal/90 transition-all"
+          >
+            Continue Shopping
+          </button>
+        </div>
+      );
+    }
     return (
       <div className="pt-40 pb-40 text-center space-y-6">
         <ShoppingBag size={64} className="mx-auto text-ink/10" />
@@ -4118,6 +4212,7 @@ const HomePageWrapper = ({ books, bundles, addToCart, setSelectedBook }: { books
       }}
       books={books}
       bundles={bundles}
+      navigate={navigate}
     />
   );
 };
@@ -4134,6 +4229,7 @@ const ShopPageWrapper = ({ books, addToCart, setSelectedBook }: { books: Book[],
       activeCategory={activeCategory}
       setActiveCategory={setActiveCategory}
       books={books}
+      navigate={navigate}
     />
   );
 };
@@ -4162,7 +4258,7 @@ const ProductPageWrapper = ({ books, addToCart }: { books: Book[], addToCart: (i
   );
 };
 
-const CheckoutPageWrapper = ({ cartItems, user }: { cartItems: CartItem[], user: User | null }) => {
+const CheckoutPageWrapper = ({ cartItems, user, clearCart }: { cartItems: CartItem[], user: User | null, clearCart: () => void }) => {
   const navigate = useNavigate();
   const [isAuthOpen, setIsAuthOpen] = useState(false);
 
@@ -4173,6 +4269,8 @@ const CheckoutPageWrapper = ({ cartItems, user }: { cartItems: CartItem[], user:
         setPage={(page: string) => navigate(`/${page === 'home' ? '' : page}`)}
         user={user}
         onOpenAuth={() => setIsAuthOpen(true)}
+        navigate={navigate}
+        clearCart={clearCart}
       />
       <AuthModals
         isOpen={isAuthOpen}
@@ -4229,6 +4327,7 @@ function AppContent() {
     const saved = localStorage.getItem('user');
     return saved ? JSON.parse(saved) : null;
   });
+  const location = useLocation();
 
   const handleSetUser = (u: User | null) => {
     setUser(u);
@@ -4260,6 +4359,12 @@ function AppContent() {
     fetchBooks();
     fetchBundles();
   }, []);
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [location.pathname]);
+
+  const clearCart = () => setCartItems([]);
 
   const addToCart = (item: Book | Bundle, type: 'book' | 'bundle') => {
     setCartItems(prev => {
@@ -4321,7 +4426,7 @@ function AppContent() {
           <Route path="/shop" element={<ShopPageWrapper books={books} addToCart={addToCart} setSelectedBook={setSelectedBook} />} />
           <Route path="/bundles" element={<BundlePageWrapper bundles={bundles} books={books} addToCart={addToCart} />} />
           <Route path="/product/:id" element={<ProductPageWrapper books={books} addToCart={addToCart} />} />
-          <Route path="/checkout" element={<CheckoutPageWrapper cartItems={cartItems} user={user} />} />
+          <Route path="/checkout" element={<CheckoutPageWrapper cartItems={cartItems} user={user} clearCart={clearCart} />} />
           <Route path="/about" element={<AboutPageWrapper />} />
           <Route path="/faq" element={<FAQPageWrapper />} />
           <Route path="/privacy" element={<PolicyPageWrapper type="privacy" />} />
