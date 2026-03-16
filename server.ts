@@ -11,6 +11,73 @@ dotenv.config();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const db = new Database('inkora.db');
 
+// Helper for slug generation
+const slugify = (text: string) => {
+  return text
+    .toString()
+    .normalize('NFKD')
+    // remove diacritical marks (accents)
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim()
+    .replace(/['"“”‘’]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+};
+
+const generateUniqueSlug = (title: string, excludeId?: string) => {
+  const base = slugify(title) || 'item';
+  const likePattern = `${base}%`;
+  const params: any[] = [likePattern];
+  let query = 'SELECT slug FROM books WHERE slug LIKE ?';
+  if (excludeId) {
+    query += ' AND id != ?';
+    params.push(excludeId);
+  }
+
+  const existing = db.prepare(query).all(...params).map((r: any) => r.slug).filter(Boolean) as string[];
+  const used = new Set(existing);
+
+  if (!used.has(base)) {
+    return base;
+  }
+
+  let i = 2;
+  while (true) {
+    const candidate = `${base}-${i}`;
+    if (!used.has(candidate)) return candidate;
+    i += 1;
+  }
+};
+
+const ensureSlugColumn = () => {
+  const columns = db.prepare("PRAGMA table_info(books)").all() as any[];
+  const hasSlug = columns.some(c => c.name === 'slug');
+  if (!hasSlug) {
+    db.exec('ALTER TABLE books ADD COLUMN slug TEXT;');
+  }
+
+  const books = db.prepare('SELECT id, title, slug FROM books').all() as any[];
+  const used = new Set<string>();
+
+  books.forEach((book) => {
+    let slug = book.slug;
+    if (!slug) {
+      slug = generateUniqueSlug(book.title, book.id);
+      db.prepare('UPDATE books SET slug = ? WHERE id = ?').run(slug, book.id);
+    }
+
+    if (used.has(slug)) {
+      slug = generateUniqueSlug(book.title, book.id);
+      db.prepare('UPDATE books SET slug = ? WHERE id = ?').run(slug, book.id);
+    }
+
+    used.add(slug);
+  });
+
+  db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_books_slug ON books(slug);');
+};
+
 // Initialize Database
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (
@@ -53,7 +120,8 @@ db.exec(`
     whoIsItFor TEXT,
     keyTakeaways TEXT,
     isBestSeller INTEGER DEFAULT 0,
-    discount REAL DEFAULT 0
+    discount REAL DEFAULT 0,
+    slug TEXT
   );
 
   CREATE TABLE IF NOT EXISTS bundles (
@@ -68,6 +136,8 @@ db.exec(`
   );
 `);
 
+ensureSlugColumn();
+
 // Seed Initial Data
 const bookCount = db.prepare('SELECT COUNT(*) as count FROM books').get() as any;
 if (bookCount.count === 0) {
@@ -80,8 +150,11 @@ if (bookCount.count === 0) {
     { id: '6', title: 'The Diary of a CEO', author: 'Steven Bartlett', price: 4800, image: 'https://m.media-amazon.com/images/I/71p+8v+8+SL._AC_UF1000,1000_QL80_.jpg', description: 'The 33 laws of business and life.', category: 'Business', whoIsItFor: ['Founders', 'Leaders', 'Aspiring entrepreneurs'], keyTakeaways: ['The law of the first 5 minutes', 'The power of story', 'The importance of culture'], isBestSeller: 1 },
     { id: '7', title: 'Million Dollar Weekend', author: 'Noah Kagan', price: 3900, image: 'https://m.media-amazon.com/images/I/71p+8v+8+SL._AC_UF1000,1000_QL80_.jpg', description: 'The surprisingly simple way to launch a 7-figure business in 48 hours.', category: 'Business', whoIsItFor: ['Aspiring founders', 'Side hustlers', 'Action takers'], keyTakeaways: ['The "Now" habit', 'Ask for what you want', 'Validate before building'], isBestSeller: 0 }
   ];
-  const insertBook = db.prepare('INSERT INTO books (id, title, author, price, image, description, category, whoIsItFor, keyTakeaways, isBestSeller) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
-  initialBooks.forEach(b => insertBook.run(b.id, b.title, b.author, b.price, b.image, b.description, b.category, JSON.stringify(b.whoIsItFor), JSON.stringify(b.keyTakeaways), b.isBestSeller));
+  const insertBook = db.prepare('INSERT INTO books (id, title, author, price, image, description, category, whoIsItFor, keyTakeaways, isBestSeller, slug) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+  initialBooks.forEach(b => {
+    const slug = generateUniqueSlug(b.title, b.id);
+    insertBook.run(b.id, b.title, b.author, b.price, b.image, b.description, b.category, JSON.stringify(b.whoIsItFor), JSON.stringify(b.keyTakeaways), b.isBestSeller, slug);
+  });
 }
 
 const bundleCount = db.prepare('SELECT COUNT(*) as count FROM bundles').get() as any;
@@ -336,14 +409,52 @@ async function startServer() {
     })));
   });
 
+  app.get('/api/books/slug/:slug', (req, res) => {
+    const { slug } = req.params;
+    const book = db.prepare('SELECT * FROM books WHERE slug = ?').get(slug) as any;
+    if (!book) {
+      return res.status(404).json({ success: false, message: 'Book not found' });
+    }
+    res.json({
+      ...book,
+      whoIsItFor: JSON.parse(book.whoIsItFor || '[]'),
+      keyTakeaways: JSON.parse(book.keyTakeaways || '[]'),
+      isBestSeller: !!book.isBestSeller
+    });
+  });
+
+  // Redirect old product URLs to SEO-friendly slugs
+  app.get('/product/:id', (req, res) => {
+    const { id } = req.params;
+    const book = db.prepare('SELECT slug FROM books WHERE id = ?').get(id) as any;
+    if (!book || !book.slug) {
+      return res.status(404).send('Not found');
+    }
+    return res.redirect(301, `/books/${book.slug}`);
+  });
+
   app.post('/api/admin/books', adminAuth, (req, res) => {
     const { id, title, author, price, image, description, category, whoIsItFor, keyTakeaways, isBestSeller, discount } = req.body;
     try {
+      const slug = generateUniqueSlug(title, id);
       const stmt = db.prepare(`
-        INSERT OR REPLACE INTO books (id, title, author, price, image, description, category, whoIsItFor, keyTakeaways, isBestSeller, discount)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT OR REPLACE INTO books (id, title, author, price, image, description, category, whoIsItFor, keyTakeaways, isBestSeller, discount, slug)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
-      stmt.run(id, title, author, price, image, description, category, JSON.stringify(whoIsItFor), JSON.stringify(keyTakeaways), isBestSeller ? 1 : 0, discount || 0);
+      stmt.run(
+        id,
+        title,
+        author,
+        price,
+        image,
+        description,
+        category,
+        JSON.stringify(whoIsItFor),
+        JSON.stringify(keyTakeaways),
+        isBestSeller ? 1 : 0,
+        discount || 0,
+        slug
+      );
       res.json({ success: true });
     } catch (error: any) {
       res.status(400).json({ success: false, message: error.message });

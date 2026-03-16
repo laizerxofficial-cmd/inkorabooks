@@ -4,6 +4,7 @@ export const BOOKS: Book[] = [
   {
     id: '1',
     title: 'Atomic Habits',
+    slug: 'atomic-habits',
     author: 'James Clear',
     price: 3500,
     image: 'https://m.media-amazon.com/images/I/91bYsX41DVL._AC_UF1000,1000_QL80_.jpg',
@@ -16,6 +17,7 @@ export const BOOKS: Book[] = [
   {
     id: '2',
     title: 'Essentialism',
+    slug: 'essentialism',
     author: 'Greg McKeown',
     price: 3800,
     image: 'https://m.media-amazon.com/images/I/71X8X8-S3UL._AC_UF1000,1000_QL80_.jpg',
@@ -28,6 +30,7 @@ export const BOOKS: Book[] = [
   {
     id: '3',
     title: 'Feel Good Productivity',
+    slug: 'feel-good-productivity',
     author: 'Ali Abdaal',
     price: 4200,
     image: 'https://m.media-amazon.com/images/I/71u9S+X9X+L._AC_UF1000,1000_QL80_.jpg',
@@ -40,6 +43,7 @@ export const BOOKS: Book[] = [
   {
     id: '4',
     title: 'Can\'t Hurt Me',
+    slug: 'cant-hurt-me',
     author: 'David Goggins',
     price: 4500,
     image: 'https://m.media-amazon.com/images/I/81g8T-0D+9L._AC_UF1000,1000_QL80_.jpg',
@@ -52,6 +56,7 @@ export const BOOKS: Book[] = [
   {
     id: '5',
     title: 'Dopamine Detox',
+    slug: 'dopamine-detox',
     author: 'Thibaut Meurisse',
     price: 2800,
     image: 'https://m.media-amazon.com/images/I/61S8vV+Q+SL._AC_UF1000,1000_QL80_.jpg',
@@ -63,6 +68,7 @@ export const BOOKS: Book[] = [
   {
     id: '6',
     title: 'The Diary of a CEO',
+    slug: 'the-diary-of-a-ceo',
     author: 'Steven Bartlett',
     price: 4800,
     image: 'https://m.media-amazon.com/images/I/71p+8v+8+SL._AC_UF1000,1000_QL80_.jpg',
@@ -75,6 +81,7 @@ export const BOOKS: Book[] = [
   {
     id: '7',
     title: 'Million Dollar Weekend',
+    slug: 'million-dollar-weekend',
     author: 'Noah Kagan',
     price: 3900,
     image: 'https://m.media-amazon.com/images/I/71p+8v+8+SL._AC_UF1000,1000_QL80_.jpg',

@@ -2840,7 +2840,7 @@ const HomePage = ({
             <BookStack 
               books={books.slice(0, 5)} 
               onBookClick={(book) => {
-                navigate('/product/' + book.id);
+                navigate(`/books/${book.slug}`);
               }} 
             />
           </motion.div>
@@ -2965,7 +2965,7 @@ const HomePage = ({
                 <div 
                   className="aspect-[3/4] rounded-xl overflow-hidden cursor-pointer relative shadow-sm group-hover:shadow-2xl group-hover:shadow-teal/10 transition-all duration-500"
                   onClick={() => {
-                    navigate('/product/' + book.id);
+                    navigate(`/books/${book.slug}`);
                   }}
                 >
                   <img src={book.image} alt={book.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
@@ -3156,7 +3156,7 @@ const ShopPage = ({
               <div 
                 className="aspect-[3/4] rounded-[2rem] overflow-hidden cursor-pointer relative shadow-sm hover:shadow-2xl transition-all duration-500"
                 onClick={() => {
-                  navigate('/product/' + book.id);
+                  navigate(`/books/${book.slug}`);
                 }}
               >
                 <motion.img 
@@ -4240,11 +4240,33 @@ const BundlePageWrapper = ({ bundles, books, addToCart }: { bundles: Bundle[], b
 
 const ProductPageWrapper = ({ books, addToCart }: { books: Book[], addToCart: (item: Book | Bundle, type: 'book' | 'bundle') => void }) => {
   const navigate = useNavigate();
-  const { id } = useParams<{ id: string }>();
-  const book = books.find(b => b.id === id);
+  const { slug } = useParams<{ slug: string }>();
+  const [fetchedBook, setFetchedBook] = useState<Book | null>(null);
+  const bookFromStore = books.find(b => b.slug === slug);
+  const book = bookFromStore || fetchedBook;
+
+  useEffect(() => {
+    if (!slug) return;
+    if (bookFromStore) return; // already have it
+
+    fetch(`/api/books/slug/${encodeURIComponent(slug)}`)
+      .then(res => res.ok ? res.json() : null)
+      .then((data) => {
+        if (data) {
+          setFetchedBook(data as Book);
+        }
+      })
+      .catch(() => {
+        // ignore
+      });
+  }, [slug, bookFromStore]);
+
+  if (!slug) {
+    return <div>Invalid book URL</div>;
+  }
 
   if (!book) {
-    return <div>Book not found</div>;
+    return <div>Loading...</div>;
   }
 
   return (
@@ -4256,6 +4278,21 @@ const ProductPageWrapper = ({ books, addToCart }: { books: Book[], addToCart: (i
       books={books}
     />
   );
+};
+
+const LegacyProductRedirect = ({ books }: { books: Book[] }) => {
+  const navigate = useNavigate();
+  const { id } = useParams<{ id: string }>();
+
+  useEffect(() => {
+    if (!id) return;
+    const book = books.find(b => b.id === id);
+    if (book) {
+      navigate(`/books/${book.slug}`, { replace: true });
+    }
+  }, [id, books, navigate]);
+
+  return <div>Redirecting...</div>;
 };
 
 const CheckoutPageWrapper = ({ cartItems, user, clearCart }: { cartItems: CartItem[], user: User | null, clearCart: () => void }) => {
@@ -4425,7 +4462,8 @@ function AppContent() {
           <Route path="/" element={<HomePageWrapper books={books} bundles={bundles} addToCart={addToCart} setSelectedBook={setSelectedBook} />} />
           <Route path="/shop" element={<ShopPageWrapper books={books} addToCart={addToCart} setSelectedBook={setSelectedBook} />} />
           <Route path="/bundles" element={<BundlePageWrapper bundles={bundles} books={books} addToCart={addToCart} />} />
-          <Route path="/product/:id" element={<ProductPageWrapper books={books} addToCart={addToCart} />} />
+          <Route path="/product/:id" element={<LegacyProductRedirect books={books} />} />
+          <Route path="/books/:slug" element={<ProductPageWrapper books={books} addToCart={addToCart} />} />
           <Route path="/checkout" element={<CheckoutPageWrapper cartItems={cartItems} user={user} clearCart={clearCart} />} />
           <Route path="/about" element={<AboutPageWrapper />} />
           <Route path="/faq" element={<FAQPageWrapper />} />
@@ -4459,7 +4497,7 @@ function AppContent() {
         setPage={() => {}} // Not used anymore
         setSelectedBook={(book) => {
           setSelectedBook(book);
-          navigate(`/product/${book.id}`);
+          navigate(`/books/${book.slug}`);
           setIsSearchOpen(false);
         }}
         books={books}
